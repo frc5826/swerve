@@ -5,53 +5,51 @@ import interfaces.RobotController;
 import interfaces.RobotInterface;
 import interfaces.SwerveWheelInterface;
 
-import java.util.List;
+import java.util.List; // test
 
 public class FieldOrientedSwerve implements RobotController {
-    @Override // this tells Java that the `loop` method implements the `loop` method specified in `RobotController`
+    @Override
     public void loop(JoysticksInterface joysticks, RobotInterface robot) {
 
-        double wheelVelocity;
-        double wheelAngle;
-
-        double transitionalVelocity = fieldOriented(robot.getHeading(), Math.atan2(joysticks.getLeftStick().x,  joysticks.getLeftStick().y));
-        double transitionalAngle = Math.atan2(joysticks.getLeftStick().x,  joysticks.getLeftStick().y);
         double[] transitionalVectorXY;
-        if (transitionalVelocity < 0.05)
-            transitionalVelocity = 0;
-
-        double rotationalVelocity;
-        double rotationalAngle;
         double[] rotationalVectorXY;
-
-        double finalVectorX;
-        double finalVectorY;
 
         List<SwerveWheelInterface> drivetrain = robot.getDrivetrain();
 
         for(int i = 0; i < drivetrain.size(); i++) {
             SwerveWheelInterface wheel = drivetrain.get(i);
 
-            rotationalVelocity = (joysticks.getRightStick().y * Math.sqrt(Math.pow(wheel.getPosition().x - 0, 2) + Math.pow(wheel.getPosition().y - 0, 2))) * 2;
-            rotationalAngle = Math.atan2(-wheel.getPosition().y, wheel.getPosition().x);
-            if (rotationalVelocity < 0.05 && rotationalVelocity > -0.05)
-                rotationalVelocity = 0;
+            //find coords of joystick
+            double lJoystickX = joysticks.getLeftStick().x;
+            double lJoystickY = joysticks.getLeftStick().y;
+            double rJoystickX = joysticks.getRightStick().x;
+            double rJoystickY = joysticks.getRightStick().y;
 
-            transitionalVectorXY = vector(transitionalVelocity, transitionalAngle);
-            rotationalVectorXY = vector(rotationalVelocity, rotationalAngle);
+            //find wheel coords
+            double wheelX = wheel.getPosition().x;
+            double wheelY = wheel.getPosition().y;
 
-            finalVectorX = transitionalVectorXY[0] + rotationalVectorXY[0];
-            finalVectorY = transitionalVectorXY[1] + rotationalVectorXY[1];
+            //calculate the vectors of the transitional and rotational swerve ([0] of array is x and [1] is y)
+            transitionalVectorXY = vector(getTransitionalVelocity(lJoystickX, lJoystickY), fieldOriented(robot.getHeading(), Math.atan2(joysticks.getLeftStick().x,  joysticks.getLeftStick().y)));
+            rotationalVectorXY = vector(getRotationalVelocity(rJoystickX, rJoystickY), getRotationalAngle(wheelX, wheelY));
 
-            wheelVelocity = Math.sqrt(Math.pow(finalVectorX - 0, 2) + Math.pow(finalVectorY - 0, 2));
-            wheelAngle = calculateAngle(finalVectorX, finalVectorY);
-
-            wheel.setWheelVelocity(wheelVelocity);
-            wheel.setWheelAngle(wheelAngle);
+            //calculate and set the wheel velocity and angle
+            wheel.setWheelVelocity(getWheelVelocity(transitionalVectorXY[0] + rotationalVectorXY[0], transitionalVectorXY[1] + rotationalVectorXY[1]));
+            wheel.setWheelAngle(calculateAngle(transitionalVectorXY[0] + rotationalVectorXY[0], transitionalVectorXY[1] + rotationalVectorXY[1]));
         }
     }
 
-     static double[] vector(double velocity, double angle) {
+    //read the names
+    public static double getTransitionalVelocity(double x, double y) { return (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2))) * 2; }
+
+    public static double getRotationalVelocity(double x, double y) { return (y * Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2))) * 2; }
+
+    public static double getRotationalAngle(double x, double y) { return Math.atan2(-y, x); }
+
+    public static double getWheelVelocity(double vectorX, double vectorY) { return Math.sqrt(Math.pow(vectorX, 2) + Math.pow(vectorY, 2)); }
+
+
+    static double[] vector(double velocity, double angle) {
 
         double referenceAngle = 0;
         double x = 0;
@@ -95,24 +93,32 @@ public class FieldOrientedSwerve implements RobotController {
         else if (x < 0 && y > 0)
             angle = -(Math.toRadians(90) + Math.atan2(y, x));
         else if (x <= 0 && y <= 0);
-            angle = -Math.toRadians(90) + Math.atan2(y, x);
+        angle = -Math.toRadians(90) + Math.atan2(y, x);
 
         return angle;
     }
 
-    //TODO make this actually work lol
-
     static double fieldOriented(double robotAngle, double joystickAngle) {
-        double fieldOrientedAngle = 0;
+        double fieldOrientedAngle = robotAngle;
+        final double PI = Math.PI;
 
-        if (joystickAngle >= 0 && robotAngle >= 0)
-            fieldOrientedAngle = joystickAngle - robotAngle;
-        else if (joystickAngle >= 0 && robotAngle < 0)
+        if (joystickAngle >= 0 && robotAngle >= 0){
+            if (robotAngle > joystickAngle)
+                fieldOrientedAngle = robotAngle + joystickAngle;
+            else if (robotAngle < joystickAngle)
+                fieldOrientedAngle = robotAngle - joystickAngle;
+        }
+        else if (joystickAngle >= 0 && robotAngle <= 0)
+            fieldOrientedAngle = robotAngle + joystickAngle;
+        else if (joystickAngle <= 0 && robotAngle >= 0)
+            fieldOrientedAngle = robotAngle + joystickAngle;
+        else if (joystickAngle <= 0 && robotAngle <= 0)
             fieldOrientedAngle = joystickAngle + robotAngle;
-        else if (joystickAngle < 0 && robotAngle > 0)
-            fieldOrientedAngle = -(joystickAngle + robotAngle);
-        else if (joystickAngle < 0 && robotAngle < 0)
-            fieldOrientedAngle = joystickAngle + robotAngle;
+
+        if (fieldOrientedAngle > PI)
+            fieldOrientedAngle = fieldOrientedAngle - Math.toRadians(360);
+        if (fieldOrientedAngle < -PI)
+            fieldOrientedAngle = fieldOrientedAngle + Math.toRadians(360);
 
         return fieldOrientedAngle;
     }
