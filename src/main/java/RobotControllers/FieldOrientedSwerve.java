@@ -5,7 +5,7 @@ import interfaces.RobotController;
 import interfaces.RobotInterface;
 import interfaces.SwerveWheelInterface;
 
-import java.util.List; // test
+import java.util.List;
 
 public class FieldOrientedSwerve implements RobotController {
     @Override
@@ -30,7 +30,7 @@ public class FieldOrientedSwerve implements RobotController {
             double wheelY = wheel.getPosition().y;
 
             //calculate the vectors of the transitional and rotational swerve ([0] of array is x and [1] is y)
-            transitionalVectorXY = vector(getTransitionalVelocity(lJoystickX, lJoystickY), fieldOriented(robot.getHeading(), Math.atan2(joysticks.getLeftStick().x,  joysticks.getLeftStick().y)));
+            transitionalVectorXY = vector(getTransitionalVelocity(lJoystickX, lJoystickY), fieldOriented(robot.getHeading(), Math.atan2(lJoystickX, lJoystickY)));
             rotationalVectorXY = vector(getRotationalVelocity(rJoystickX, rJoystickY), getRotationalAngle(wheelX, wheelY));
 
             //calculate and set the wheel velocity and angle
@@ -48,31 +48,35 @@ public class FieldOrientedSwerve implements RobotController {
 
     public static double getWheelVelocity(double vectorX, double vectorY) { return Math.sqrt(Math.pow(vectorX, 2) + Math.pow(vectorY, 2)); }
 
+    static double fieldOriented(double robotAngle, double joystickAngle) { return (joystickAngle + robotAngle); }
 
+    //TODO someday maybe find a way to make this more efficient
     static double[] vector(double velocity, double angle) {
+
+        double halfPi = Math.PI / 2;
 
         double referenceAngle = 0;
         double x = 0;
         double y = 0;
         double[] vector = new double[2];
 
-        if (angle >= 0 && angle <= 1.5708) {
-            referenceAngle = 1.5708 - angle;
+        if (angle >= 0 && angle <= halfPi) {
+            referenceAngle = halfPi - angle;
             x = Math.cos(referenceAngle) * velocity;
             y = Math.sin(referenceAngle) * velocity;
         }
-        else if (angle > 1.5708) {
-            referenceAngle = angle - 1.5708;
+        else if (angle > halfPi) {
+            referenceAngle = angle - halfPi;
             x = Math.cos(referenceAngle) * velocity;
             y = -(Math.sin(referenceAngle) * velocity);
         }
-        else if (angle < 0 && angle >= -1.5708) {
-            referenceAngle = 1.5708 + angle;
+        else if (angle < 0 && angle >= -halfPi) {
+            referenceAngle = halfPi + angle;
             x = -(Math.cos(referenceAngle) * velocity);
             y = Math.sin(referenceAngle) * velocity;
         }
-        else if (angle < -1.5708) {
-            referenceAngle = -(1.5708 + angle);
+        else if (angle < -halfPi) {
+            referenceAngle = -(halfPi + angle);
             x = -(Math.cos(referenceAngle) * velocity);
             y = -(Math.sin(referenceAngle) * velocity);
         }
@@ -96,30 +100,5 @@ public class FieldOrientedSwerve implements RobotController {
         angle = -Math.toRadians(90) + Math.atan2(y, x);
 
         return angle;
-    }
-
-    static double fieldOriented(double robotAngle, double joystickAngle) {
-        double fieldOrientedAngle = robotAngle;
-        final double PI = Math.PI;
-
-        if (joystickAngle >= 0 && robotAngle >= 0){
-            if (robotAngle > joystickAngle)
-                fieldOrientedAngle = robotAngle + joystickAngle;
-            else if (robotAngle < joystickAngle)
-                fieldOrientedAngle = robotAngle - joystickAngle;
-        }
-        else if (joystickAngle >= 0 && robotAngle <= 0)
-            fieldOrientedAngle = robotAngle + joystickAngle;
-        else if (joystickAngle <= 0 && robotAngle >= 0)
-            fieldOrientedAngle = robotAngle + joystickAngle;
-        else if (joystickAngle <= 0 && robotAngle <= 0)
-            fieldOrientedAngle = joystickAngle + robotAngle;
-
-        if (fieldOrientedAngle > PI)
-            fieldOrientedAngle = fieldOrientedAngle - Math.toRadians(360);
-        if (fieldOrientedAngle < -PI)
-            fieldOrientedAngle = fieldOrientedAngle + Math.toRadians(360);
-
-        return fieldOrientedAngle;
     }
 }
